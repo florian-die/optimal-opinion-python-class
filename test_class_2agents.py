@@ -10,6 +10,7 @@ my_op.kh = 0.0
 my_op.mu = 1.0
 my_op.sat = np.infty
 my_op.eta = 0.5
+my_op.t1 = 0.0
 
 #my_op.atol = 1e-14
 #my_op.rtol = 1e-10
@@ -78,6 +79,7 @@ my_op.trace(P3,tf3)
 P4 = P3.copy()
 tf4 = tf3.copy()
 
+my_op.t1 = 0.0
 my_op.mu = 0.2
 mu_end = 0.125
 mu_step = 0.005
@@ -92,5 +94,52 @@ while my_op.mu > mu_end:
     sol3, P4, tf4 = my_op.solve(P4,tf4,trace=False,echo=False)
     print(sol3.success)
 
+#%%
+my_op.t1 = 0.0
 print("Solution without control cost")
-my_op.trace(P4,tf4)
+data4 = my_op.trace(P4,tf4)
+tk4 = data4.t
+u4 = data4.u
+Pk4 = data4.P
+
+
+#%%
+''' switching time '''
+
+my_op.mu = 0.125
+
+# educated guess
+id_t1 = 21
+my_op.t1 = tk4[id_t1]
+P5 = Pk4[id_t1,:]
+
+Z4 = np.zeros((my_op.N+2,))
+Z4[:my_op.N] = P5
+Z4[-2] = my_op.t1
+Z4[-1] = tf4
+
+#F = my_op.F_zero_sw(Z4)
+
+#my_op.trace_sw(P5,tf4)
+
+my_op.rootmethod = 'lm'
+sol4, P5, tf4 = my_op.solve_sw(P5,tf4,trace=False,echo=False)
+print(sol4.success)
+
+my_op.trace_sw(P5,tf4)
+
+my_op.mu = 0.125
+mu_end = 0.1
+mu_step = 0.001
+
+while my_op.mu > mu_end:
+    
+    my_op.mu -= mu_step
+    if my_op.mu < mu_end:
+        my_op.mu = mu_end 
+    print(my_op.mu)
+    
+    sol4, P5, tf4 = my_op.solve_sw(P5,tf4,trace=True,echo=True)
+    print(sol4.success)
+
+my_op.trace_sw(P5,tf4)

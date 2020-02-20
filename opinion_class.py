@@ -22,6 +22,9 @@ def saturate(x,sat=np.infty):
         return -sat
     return x;
 
+class struct:
+    pass
+
 class opinion:
     
     def __init__(self,Y0,eta=0.5):
@@ -35,6 +38,8 @@ class opinion:
         self.mu = 1.0
         self.kh = 0.0
         
+        self.t1 = 0.0
+        
         self.atol = None # 1e-8
         self.rtol = None # 1e-8
         
@@ -42,9 +47,12 @@ class opinion:
         
     def control(self,X,t):
         
-        phi = np.sum(X[self.N+1:])
-        
-        u = phi/self.mu;
+        if t < self.t1 and self.sat != np.infty:            
+            u = self.sat
+            
+        else:        
+            phi = np.sum(X[self.N+1:])        
+            u = phi/self.mu;
             
         return saturate(u,self.sat);
 
@@ -120,6 +128,50 @@ class opinion:
         
         return sol, sol.P, sol.tf;
     
+    def F_zero_sw(self,Z):
+        P0 = Z[0:-2]
+        self.t1 = np.abs(Z[-2])
+        tf = Z[-1]
+        
+        X0 = np.concatenate((self.Y0,P0))
+
+        X = self.odeint(X0,(0.0,self.t1))
+        Y1 = X[-1,:self.N+1]
+        X1 = np.concatenate((Y1,P0))
+        
+        X = self.odeint(X1,(self.t1,tf))
+        Xf = X[-1,:]
+        
+        F = np.zeros(self.N+2)
+        
+        F[0] = self.hamil(Xf,tf)
+        F[1] = Xf[1] + self.eta
+        F[2] = Xf[self.N] - self.eta
+        
+#        if (self.N > 2):
+#            F[3] = self.hamil(X0,0.0)
+
+        return F;
+    
+    def solve_sw(self,P0,tf0,trace=False,echo=False):
+        
+        Z0 = np.concatenate((P0,np.array([self.t1]),tf0))
+        
+        sol = root(self.F_zero_sw,Z0,method=self.rootmethod)
+        
+        Z1 = sol.x        
+        sol.tf = np.array([Z1[-1]])
+        sol.t1 = Z1[-2]
+        sol.P = Z1[:-2]
+        
+        if echo:
+            print(sol)
+        
+        if trace:
+            self.trace_sw(sol.P,sol.tf)        
+        
+        return sol, sol.P, sol.tf;
+    
     def trace(self,P0,tf):
         
         X0 = np.concatenate((self.Y0,P0))
@@ -148,6 +200,71 @@ class opinion:
         
         plt.subplot(4,1,2)
         plt.plot(t,u,'r')
+        plt.grid(True)
+        plt.xlabel('time')
+        plt.ylabel('control')
+        
+        plt.subplot(4,1,3)
+        plt.plot(t,X[:,self.N+1:],'c')
+        plt.grid(True)  
+        plt.xlabel('time')
+        plt.ylabel('co-states')
+        
+        plt.subplot(4,1,4)
+        plt.plot(t,H,'g')
+        plt.grid(True)  
+        plt.xlabel('time')
+        plt.ylabel('hamiltonian')
+        
+        plt.show()
+        
+        data = struct()
+        data.t = t
+        data.x0 = x0
+        data.xi = xi
+        data.u = u
+        data.H = H
+        data.P = X[:,self.N+1:]
+        
+        return data
+        
+    def trace_sw(self,P0,tf):
+        
+        X0 = np.concatenate((self.Y0,P0))
+        
+        tk1 = np.linspace(0.0,self.t1,100).reshape(-1,)
+        Xk1 = self.odeint(X0,tk1)
+        
+        Y1 = Xk1[-1,:self.N+1]
+        X1 = np.concatenate((Y1,P0))
+        
+        tk2 = np.linspace(self.t1,tf,100).reshape(-1,)
+        Xk2 = self.odeint(X1,tk2)
+        
+        X = np.concatenate((Xk1,Xk2))
+        t = np.concatenate((tk1,tk2))
+        
+        x0 = X[:,0].reshape(-1,1)
+        xi = X[:,1:self.N+1]+x0
+        
+        u = np.zeros(t.shape)
+        H = np.zeros(t.shape)
+        
+        for i in range(t.shape[0]):
+            u[i] = self.control(X[i,:],t[i])
+            H[i] = self.hamil(X[i,:],t[i])
+        
+        plt.figure(figsize=(12,15))
+        plt.subplot(4,1,1)        
+        plt.plot(t,x0,'r',label='leader')
+        plt.plot(t,xi,'b',label='agents')
+        plt.grid(True)
+        plt.xlabel('time')
+        plt.ylabel('opinions')
+#        plt.legend()
+        
+        plt.subplot(4,1,2)
+        plt.plot(t,u,'r.')
         plt.grid(True)
         plt.xlabel('time')
         plt.ylabel('control')
