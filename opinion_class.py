@@ -25,6 +25,7 @@ def saturate(x,sat=np.infty):
 class opinion:
     
     def __init__(self,Y0,eta=0.5):
+        
         self.Y0 = Y0
         self.N = Y0.shape[0]-1
         
@@ -33,8 +34,6 @@ class opinion:
         
         self.mu = 1.0
         self.kh = 0.0
-        
-        self.t1 = -np.infty
         
         self.atol = None # 1e-8
         self.rtol = None # 1e-8
@@ -45,10 +44,7 @@ class opinion:
         
         phi = np.sum(X[self.N+1:])
         
-        if t < self.t1:
-            u = np.sign(phi)*self.sat
-        else:
-            u = phi/self.mu;
+        u = phi/self.mu;
             
         return saturate(u,self.sat);
 
@@ -124,36 +120,6 @@ class opinion:
         
         return sol, sol.P, sol.tf;
     
-     # doesn't work because float are not mutable (no pass by reference)
-#    def solve_c(self,Y0,P,tf,param,param_end,param_step,trace=False,echo=False):
-#        
-#        direction = np.sign(param_end-param)
-#        
-#        if direction > 0:
-#            condition = param < param_end
-#        else:
-#            condition = param > param_end    
-#        
-#        while condition :
-#    
-#            param += direction*param_step
-#            
-#            if (direction > 0 and param > param_end) or (direction <= 0 and param < param_end):
-#                param = param_end    
-#                
-#            print(param)
-#            
-#            sol, P, tf = self.solve(Y0,P,tf,trace,echo)
-#            
-#            print(sol.success)
-#            
-#            if direction > 0:
-#                condition = param < param_end
-#            else:
-#                condition = param > param_end 
-#            
-#        return sol, P, tf;
-    
     def trace(self,P0,tf):
         
         X0 = np.concatenate((self.Y0,P0))
@@ -198,6 +164,4 @@ class opinion:
         plt.xlabel('time')
         plt.ylabel('hamiltonian')
         
-        
         plt.show()
-
