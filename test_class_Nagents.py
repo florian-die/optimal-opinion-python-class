@@ -1,9 +1,9 @@
 import numpy as np
 import opinion_class as op
 
-N = 6
+Y0 = np.array([0.0,3,3.5,4.0,12.0,13.0,14.0])
 
-my_op = op.opinion(N)
+my_op = op.opinion(Y0)
 
 my_op.kh = 0.0
 my_op.mu = 1.0
@@ -15,30 +15,22 @@ my_op.rootmethod = 'lm'
 #my_op.atol = 1e-14
 #my_op.rtol = 1e-10
 
-Y0 = np.array([0.0,3,3.5,4.0,12.0,13.0,14.0])
-P0 = np.zeros((N,))
+P0 = np.zeros((my_op.N,))
 P0[0] = -0.491088
 P0[-1] = 1.91331
 
 tf0 = np.array([16.67589717602594845])
 
-X0 = np.concatenate((Y0,P0))
-Z0 = np.concatenate((P0,tf0))
-
 print("Initial educated guess")
-my_op.trace(Y0,P0,tf0)
+my_op.trace(P0,tf0)
 
 print("Refining around guess")
-sol0, P1, tf1 = my_op.solve(Y0,P0,tf0,trace=True,echo=True)
+sol0, P1, tf1 = my_op.solve(P0,tf0,trace=True,echo=True)
 
 #%%
 ''' interactions '''
 P2 = P1.copy()
 P2[1:-1] = 0.01
-#P2[2] = 0.01
-#P2[3] = 0.02
-#P2[4] = 0.03
-#P2[5] = 0.04
 tf2 = tf1.copy()
 
 my_op.mu = 1.0
@@ -58,11 +50,11 @@ while my_op.kh < kh_end:
         my_op.kh = kh_end
     print(my_op.kh)
     
-    sol1, P2, tf2 = my_op.solve(Y0,P2,tf2,trace=False,echo=False)
+    sol1, P2, tf2 = my_op.solve(P2,tf2,trace=False,echo=False)
     print(sol1.success)
 
 print("Solution with interactions")
-my_op.trace(Y0,P2,tf2)
+my_op.trace(P2,tf2)
 
 #%%
 ''' control '''
@@ -86,11 +78,11 @@ while my_op.mu > mu_end:
         my_op.mu = mu_end    
     print(my_op.mu)
     
-    sol2, P3, tf3 = my_op.solve(Y0,P3,tf3,trace=False,echo=False)
+    sol2, P3, tf3 = my_op.solve(P3,tf3,trace=False,echo=False)
     print(sol2.success)
 
 print("Solution without control cost")
-my_op.trace(Y0,P3,tf3)
+my_op.trace(P3,tf3)
 
 #%%
 P4 = P3.copy()
@@ -106,8 +98,8 @@ while my_op.mu > mu_end:
         my_op.mu = mu_end    
     print(my_op.mu)
     
-    sol3, P4, tf4 = my_op.solve(Y0,P4,tf4,trace=False,echo=False)
+    sol3, P4, tf4 = my_op.solve(P4,tf4,trace=False,echo=False)
     print(sol2.success)
 
 print("Solution without control cost")
-my_op.trace(Y0,P4,tf4)
+my_op.trace(P4,tf4)

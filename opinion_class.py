@@ -24,8 +24,9 @@ def saturate(x,sat=np.infty):
 
 class opinion:
     
-    def __init__(self,N,eta=0.5):
-        self.N = N
+    def __init__(self,Y0,eta=0.5):
+        self.Y0 = Y0
+        self.N = Y0.shape[0]-1
         
         self.sat = np.infty
         self.eta = eta 
@@ -85,11 +86,11 @@ class opinion:
         
         return H;
     
-    def F_zero(self,Z,Y0):
+    def F_zero(self,Z):
         P0 = Z[0:-1]
         tf = Z[-1]
         
-        X0 = np.concatenate((Y0,P0))
+        X0 = np.concatenate((self.Y0,P0))
 
         X = self.odeint(X0,(0.0,tf))
         Xf = X[-1,:]
@@ -105,11 +106,11 @@ class opinion:
 
         return F;
     
-    def solve(self,Y0,P0,tf0,trace=False,echo=False):
+    def solve(self,P0,tf0,trace=False,echo=False):
         
         Z0 = np.concatenate((P0,tf0))
         
-        sol = root(self.F_zero,Z0,args=(Y0),method=self.rootmethod)
+        sol = root(self.F_zero,Z0,method=self.rootmethod)
         
         Z1 = sol.x        
         sol.tf = np.array([Z1[-1]])
@@ -119,7 +120,7 @@ class opinion:
             print(sol)
         
         if trace:
-            self.trace(Y0,sol.P,sol.tf)        
+            self.trace(sol.P,sol.tf)        
         
         return sol, sol.P, sol.tf;
     
@@ -153,9 +154,9 @@ class opinion:
 #            
 #        return sol, P, tf;
     
-    def trace(self,Y0,P0,tf):
+    def trace(self,P0,tf):
         
-        X0 = np.concatenate((Y0,P0))
+        X0 = np.concatenate((self.Y0,P0))
         
         t = np.linspace(0.0,tf,200).reshape(-1,)
         X = self.odeint(X0,t)
